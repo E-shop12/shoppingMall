@@ -7,13 +7,15 @@ import { AiOutlinePlus } from "react-icons/ai";
 import { toast } from "react-hot-toast";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import useProductStore from "@/stores/useProductStore"; // from Zustand
+import Image from "next/image";
 
 
 const AddProduct = () => {
   const [images, setImages] = useState([]);
   const [files, setFiles] = useState([]);
 
-  const [loading, setLoading] = useState(false);
+  const {createProduct,isLoading,error} =useProductStore(); // from zustand
 
   const handleImageChange = (event) => {
     const selectedFiles = Array.from(event.target.files);
@@ -30,6 +32,23 @@ const AddProduct = () => {
     setImages(newImages);
     setFiles(newFiles);
   };
+
+  const handleSubmit = async(event)=>{
+    event.preventDefault();
+
+    // grab the form values with the form Data
+    const formData = new FormData(event.target);
+    setFiles([]);
+    setImages([]);
+
+    try {
+      await createProduct(formData);
+      toast.success('product published')
+    } catch (error) {
+      toast.error('product not published')
+      console.log(error)
+    }
+  }
 
   return (
     <motion.div
@@ -62,7 +81,7 @@ const AddProduct = () => {
       </div>
 
       <form
-        // onSubmit={handleSubmit}
+        onSubmit={handleSubmit}
         className="bg-white shadow-md rounded-xl p-6 space-y-6"
       >
         <div>
@@ -99,7 +118,6 @@ const AddProduct = () => {
             name="desDetail"
             placeholder="Additional description of a product"
             className="w-full border rounded-lg px-4 py-2 h-28 resize-none placeholder-[#777186] font-[play] focus:outline-none focus:ring-1 ring-gray-300"
-            required
           />
         </div>
 
@@ -110,7 +128,6 @@ const AddProduct = () => {
           <select
             name="categoryName"
             className="w-full border rounded-lg px-4 py-2 text-[#777186] font-[play] focus:outline-none focus:ring-1 ring-gray-300"
-            required
           >
             <option value="">select a price term</option>
             <option value="Healthcare Products">Negotiable</option>
@@ -135,9 +152,8 @@ const AddProduct = () => {
             Category
           </label>
           <select
-            name="categoryName"
+            name="category"
             className="w-full border rounded-lg px-4 py-2 text-[#777186] font-[play] focus:outline-none focus:ring-1 ring-gray-300"
-            required
           >
             <option value="">Select a category</option>
             <option value="Skincare Products">
@@ -192,10 +208,12 @@ const AddProduct = () => {
                 key={index}
                 className="relative border rounded-lg overflow-hidden w-20 h-20"
               >
-                <img
+                <Image
                   src={img || ""}
                   alt="preview"
                   className="w-full h-full object-cover"
+                  width={200}
+                  height={200}
                 />
                 <button
                   type="button"
@@ -227,11 +245,11 @@ const AddProduct = () => {
             whileTap={{ scale: 0.95 }}
             type="submit"
             className={`flex text-sm md:text-[16px] items-center gap-2 bg-[#4A235A] hover:bg-[#513E5F] text-white px-7 py-2 rounded-lg font-[play] font-semibold cursor-pointer ${
-              loading ? "opacity-70 cursor-not-allowed" : ""
+              isLoading ? "opacity-70 cursor-not-allowed" : ""
             }`}
-            disabled={loading}
+            disabled={isLoading}
           >
-            {loading ? (
+            {isLoading ? (
               <>
                 <svg
                   className="animate-spin h-5 w-5 mr-2 text-white"

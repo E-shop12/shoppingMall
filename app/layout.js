@@ -1,6 +1,7 @@
 
 import { Play } from "next/font/google";
 import "./globals.css";
+import { Toaster } from "react-hot-toast";
 
 const play = Play({
   subsets: ["latin"],
@@ -15,7 +16,10 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className={play.className}>
-      <body>{ children}</body>
+      <body>
+      <Toaster position="top-right" reverseOrder={false} />
+        {children}
+        </body>
     </html>
   );
 }
