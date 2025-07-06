@@ -23,5 +23,12 @@ export const getSingleProduct = async(id) =>{
 
 // service to get all products 
 export const getAllProducts = async()=>{
-    return apiClient.get('/products');
+    const res = await apiClient.get('/products');
+    return res.data.data;
 }
+
+// service to get product category
+export const getCategory = async () => {
+  const res = await apiClient.get("/product-category");
+  return res.data.data; // ✅ returns ONLY the array now
+};

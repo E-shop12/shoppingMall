@@ -9,29 +9,17 @@ import Image from "next/image";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { FaWhatsapp, FaTelegramPlane,FaPhone, FaLocationArrow } from "react-icons/fa";
+import useProductStore from "@/stores/useProductStore"; // from zustand
 
 export default function SingleProduct() {
   const { id } = useParams();
-  const [product, setProduct] = useState({});
   const [selectedImage, setSelectedImage] = useState("");
-  const [loading, setLoading] = useState(true);
   const [profile,setProfile] = useState([]);
   const [tab, setTab] = useState("description");
 
+  const {selectedProduct: product, fetchProductById, isLoading} = useProductStore();// from zustand
 
-  const getProductDetails = async () => {
-    try {
-      const response = await axios.get(
-        `https://fakestoreapi.com/products/${id}`
-      );
-      setProduct(response.data);
-      setSelectedImage(response.data.image);
-    } catch (error) {
-      console.log("Failed to fetch product:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+
 
   const getProfileDetails = async () => {
     try {
@@ -48,14 +36,14 @@ export default function SingleProduct() {
   },[])
 
   useEffect(() => {
-    if (id) getProductDetails();
+    if (id) fetchProductById(id);
   }, [id]);
 
   return (
     <div className="p-2">
       <NavBar />
 
-      {loading ? (
+      {isLoading ? (
         <SpinnerWithProgress/>
       ) : (
         <div className="flex flex-col md:flex-row gap-6 bg-white p-4 rounded-lg shadow-md">
@@ -64,10 +52,10 @@ export default function SingleProduct() {
             <div className="absolute top-3 left-3 z-10 text-xs px-3 py-2 rounded-lg shadow text-white bg-green-600 font-semibold">
               <p>On Sale</p>
             </div>
-            {product.image && (
+            {product?.images?.length && (
               <div className="bg-gray-100 rounded-lg overflow-hidden flex justify-center items-center">
                 <Image
-                  src={selectedImage || product.image}
+                  src={selectedImage || product.images[0].imageUrl}
                   alt={product.title || "Product image"}
                   width={300}
                   height={100}
@@ -75,21 +63,21 @@ export default function SingleProduct() {
                 />
               </div>
             )}
+            {console.log("fetched data:" , product)}
 
             {/* Thumbnail (simulate multiple images by duplicating main image) */}
             <div className="flex gap-2 mt-4 overflow-x-auto">
-              {product.image &&
-                [1, 2, 3].map((i) => (
+              {product?.images?.map((img) => (
                   <Image
-                    key={i}
-                    src={product.image}
-                    alt={`Thumbnail ${i}`}
+                    key={img._id}
+                    src={img.imageUrl}
+                    alt={`Thumbnail ${img}`}
                     width={80}
                     height={80}
                     className={`cursor-pointer border rounded-md hover:opacity-70 mix-blend-multiply ${
-                      selectedImage === product.image ? "border-blue-500" : ""
+                      selectedImage === img.imageUrl ? "border-blue-500" : ""
                     }`}
-                    onClick={() => setSelectedImage(product.image)}
+                    onClick={() => setSelectedImage(img.imageUrl)}
                   />
                 ))}
             </div>
@@ -98,11 +86,11 @@ export default function SingleProduct() {
           {/* Product Info Section */}
           <div className="md:w-1/2 space-y-4">
             <h1 className="text-3xl font-bold text-gray-800">
-              {product.title}
+              {product?.name}
             </h1>
 
             <p className="text-xl text-green-600 font-semibold">
-              GHC {product.price}{" "}
+              GHC {product?.price}{" "}
               <span className="text-sm text-gray-500">(Negotiable)</span>
             </p>
 
@@ -242,12 +230,12 @@ export default function SingleProduct() {
         </div>
 
         {tab === "description" && (
-          <p className="text-gray-700 leading-relaxed">{product.description}</p>
+          <p className="text-gray-700 leading-relaxed">{product?.description}</p>
         )}
 
         {tab === "additional" && (
           <ul className="text-gray-700 list-disc pl-5 space-y-1">
-            <li>Category: {product.category}</li>
+            <li>Category: {product?.category}</li>
             <li>Product ID: {product.id}</li>
             <li>Available: In Stock</li>
           </ul>

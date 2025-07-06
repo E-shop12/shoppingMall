@@ -7,66 +7,33 @@ import Link from "next/link";
 import { FaShoppingBag, FaBoxOpen } from "react-icons/fa";
 import ProductSkeletonGrid from "@/components/stateComponents/ProductSkeletonGrid";
 import PrefetchProductCard from "@/components/PrefetchProductCard";
+import useProductStore from "@/stores/useProductStore";
 
 const ProductDisplaySection = ({ searchQuery }) => {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+
   const [activeCardId, setActiveCardId] = useState(null); // for touch overlay
+  const {products,fetchProducts,isLoading} = useProductStore();
 
   // Fetch products
-  const fetchProducts = async () => {
-    try {
-      const res = await axios.get("https://fakestoreapi.com/products/");
-      setProducts(res.data);
-    } catch (error) {
-      console.log(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchProducts();
+    if (products.length === 0) fetchProducts();
   }, []);
 
   // Filter products based on search
   const filter = products.filter(
     (product) =>
-      product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.category?.[0]?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       product.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Overlay render logic
-  const renderOverlay = (itemId) => {
-    const isActive = activeCardId === itemId;
-    return (
-      <div
-        onTouchStart={() => setActiveCardId(itemId)}
-        onTouchEnd={() => setTimeout(() => setActiveCardId(null), 1500)}
-        className={`absolute inset-0 flex items-center justify-center bg-black/40 text-white font-semibold p-4 transition-all duration-300 
-          sm:opacity-0 sm:group-hover:opacity-100 
-          ${isActive ? "opacity-100" : "opacity-0"}`}
-      >
-        <Link href={`products/${itemId}`}>
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            className="flex items-center justify-between py-3 px-5 bg-[#1f2894] cursor-pointer rounded-lg"
-          >
-            <FaShoppingBag className="mr-3" />
-            Get Item
-          </motion.button>
-        </Link>
-      </div>
-    );
-  };
 
   return (
     <div className="px-6 bg-[#F4F2EE] py-5 ">
       <div className="flex flex-col md:flex-row gap-6">
         <FilterSidebar />
         <div className="flex-1">
-          {loading ? (
+          {isLoading ? (
             <ProductSkeletonGrid />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-10">
@@ -86,12 +53,12 @@ const ProductDisplaySection = ({ searchQuery }) => {
                   </p>
                 </motion.div>
               ) : (
-                filter.map((item,index) => (
+                filter.map((item) => (
                   <PrefetchProductCard
-                    key={item.id}
+                    key={item._id}
                     item={item}
-                    isActive={activeCardId === item.id}
-                    onTouchStart={() => setActiveCardId(item.id)}
+                    isActive={activeCardId === item._id}
+                    onTouchStart={() => setActiveCardId(item._id)}
                     onTouchEnd={() =>
                       setTimeout(() => setActiveCardId(null), 1500)
                     }

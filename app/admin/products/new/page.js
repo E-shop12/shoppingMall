@@ -1,6 +1,6 @@
-'use client'
-import { motion } from "framer-motion"
-import { useState } from "react"
+"use client";
+import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
 import { FiX, FiUploadCloud, FiXCircle, FiArrowLeft } from "react-icons/fi";
 import { MdPostAdd } from "react-icons/md";
 import { AiOutlinePlus } from "react-icons/ai";
@@ -8,14 +8,15 @@ import { toast } from "react-hot-toast";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import useProductStore from "@/stores/useProductStore"; // from Zustand
+import useCategoryStore from "@/stores/useCategoryStore"; // from zustand
 import Image from "next/image";
-
 
 const AddProduct = () => {
   const [images, setImages] = useState([]);
   const [files, setFiles] = useState([]);
 
-  const {createProduct,isLoading,error} =useProductStore(); // from zustand
+  const { createProduct, isLoading, error } = useProductStore(); // from zustand
+  const {categories,fetchCategories,isLoading: catLoading,} = useCategoryStore(); // from zustand
 
   const handleImageChange = (event) => {
     const selectedFiles = Array.from(event.target.files);
@@ -33,7 +34,7 @@ const AddProduct = () => {
     setFiles(newFiles);
   };
 
-  const handleSubmit = async(event)=>{
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
     // grab the form values with the form Data
@@ -43,12 +44,17 @@ const AddProduct = () => {
 
     try {
       await createProduct(formData);
-      toast.success('product published')
+      toast.success("product published");
     } catch (error) {
-      toast.error('product not published')
-      console.log(error)
+      toast.error("product not published");
+      console.log(error);
     }
-  }
+  };
+
+  // useEffect to automatically run the fetchCategories
+  useEffect(()=>{
+    fetchCategories();
+  },[]);
 
   return (
     <motion.div
@@ -153,14 +159,16 @@ const AddProduct = () => {
           </label>
           <select
             name="category"
+            required
+            disabled={catLoading}
             className="w-full border rounded-lg px-4 py-2 text-[#777186] font-[play] focus:outline-none focus:ring-1 ring-gray-300"
           >
             <option value="">Select a category</option>
-            <option value="Skincare Products">
-              Cosmetics / Skincare Products
-            </option>
-            <option value="Healthcare Products">Healthcare Products</option>
-            <option value="Cleaning Agents">Cleaning Agents</option>
+            {categories.map((c)=>(
+              <option key={c._id} value={c._id}>
+                {c.name}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -185,7 +193,7 @@ const AddProduct = () => {
           <div className="flex items-center gap-4">
             <input
               type="file"
-              name="pictures"
+              name="images"
               multiple
               accept="image/*"
               onChange={handleImageChange}
@@ -284,6 +292,6 @@ const AddProduct = () => {
       </form>
     </motion.div>
   );
-}
+};
 
-export default AddProduct
+export default AddProduct;

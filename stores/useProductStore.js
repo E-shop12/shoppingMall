@@ -9,11 +9,14 @@ const useProductStore = create((set, get) => ({
   error: null,
 
   // Fetch all products
-  fetchProducts: async () => {
-    set({ isLoading: true, error: null });
+  fetchProducts: async (force = false) => {
+    set((state) => {
+      if (!force && state.products.length > 0) return state;
+      return { isLoading: true, error: null };
+    });
     try {
-      const data = await getAllProducts();
-      set({ products: data });
+      const res = await getAllProducts();
+      set({ products: res });
     } catch (err) {
       console.error("Fetch all products error:", err);
       set({ error: err });
@@ -24,10 +27,32 @@ const useProductStore = create((set, get) => ({
 
   // Get a single product
   fetchProductById: async (id) => {
-    set({ isLoading: true, error: null });
+    // optional: clear any stale product before loading
+    set({ isLoading: true, error: null, selectedProduct: null });
+
     try {
-      const data = await getSingleProduct(id);
-      set({ selectedProduct: data });
+      // 1️⃣  Make the request (axios response or plain object)
+      const res = await getSingleProduct(id);
+
+      /* 2️⃣  Unwrap the payload once.
+         ───────────────────────────────
+         ‣ If getSingleProduct is an axios call:
+             res          → { data: { status:'success', data:{…} } }
+             res.data     → { status:'success', data:{…} }
+             res.data.data→ { … }   ← product
+         ‣ If the service already stripped axios:
+             res          → { status:'success', data:{…} }
+             res.data     → { … }   ← product
+         ‣ If the service returns the product directly:
+             res          → { … }   ← product
+      */
+      const product =
+        res?.data?.data ?? // axios wrapper
+        res?.data ?? // one‑level wrapper
+        res; // already the product
+
+      // 3️⃣  Save just the product
+      set({ selectedProduct: product });
     } catch (err) {
       console.error("Fetch single product error:", err);
       set({ error: err });
@@ -87,6 +112,8 @@ const useProductStore = create((set, get) => ({
       set({ isLoading: false });
     }
   },
+
+  //Get product-Category
 }));
 
 export default useProductStore;
