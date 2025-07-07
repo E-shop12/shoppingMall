@@ -12,6 +12,7 @@ const SidebarContent = ({
   setMaxPrice,
   handleApply,
   handleClear,
+  categories = [],
 }) => (
   <div className="space-y-6">
     {/* ...use the updated styled filter UI from earlier here... */}
@@ -24,13 +25,11 @@ const SidebarContent = ({
         onChange={(e) => setCategory(e.target.value)}
       >
         <option value="">All</option>
-        <option value="Phones">Phones</option>
-        <option value="Tablets">Tablets</option>
-        <option value="Fashion">Fashion</option>
-        <option value="Electronics">Electronics</option>
-        <option value="Beauty">Beauty</option>
-        <option value="Home Appliances">Home Appliances</option>
-        <option value="Gaming">Gaming</option>
+        {categories.map((cat) => (
+          <option key={cat._id || cat.name} value={cat.name}>
+            {cat.name}
+          </option>
+        ))}
       </select>
     </div>
 

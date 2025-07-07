@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FaTimes } from "react-icons/fa"; // Close icon
 import SidebarContent from "./SidebarContent";
+import useCategoryStore from "@/stores/useCategoryStore"; // from zustand store
 
 const FilterSidebar = ({ onApply, onClear }) => {
   const [category, setCategory] = useState("");
@@ -12,6 +13,8 @@ const FilterSidebar = ({ onApply, onClear }) => {
   const [priceRange, setPriceRange] = useState("");
 
   const [isOpen, setIsOpen] = useState(false); // mobile drawer open state
+
+  const {categories,isLoading,fetchCategories,error} = useCategoryStore(); // from Zustand store
 
   const handleApply = () => {
     onApply({ category, priceRange, minPrice, maxPrice });
@@ -25,6 +28,17 @@ const FilterSidebar = ({ onApply, onClear }) => {
     setPriceRange("");
     onClear();
   };
+
+  useEffect(()=>{
+    fetchCategories();
+  },[fetchCategories])
+
+  if (isLoading)
+    return <p className="text-sm text-gray-500 p-4">Loading filters…</p>;
+  if (error)
+    return (
+      <p className="text-sm text-red-500 p-4">Failed to load categories</p>
+    );
 
   return (
     <>
@@ -51,6 +65,7 @@ const FilterSidebar = ({ onApply, onClear }) => {
           setMaxPrice={setMaxPrice}
           handleApply={handleApply}
           handleClear={handleClear}
+          categories={categories}
         />
       </div>
 
@@ -93,6 +108,7 @@ const FilterSidebar = ({ onApply, onClear }) => {
                 setMaxPrice={setMaxPrice}
                 handleApply={handleApply}
                 handleClear={handleClear}
+                categories={categories}
               />
             </motion.div>
           </>

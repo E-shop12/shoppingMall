@@ -16,7 +16,7 @@ const AddProduct = () => {
   const [files, setFiles] = useState([]);
 
   const { createProduct, isLoading, error } = useProductStore(); // from zustand
-  const {categories,fetchCategories,isLoading: catLoading,} = useCategoryStore(); // from zustand
+  const {categories,fetchCategories,isLoading:catLoading,} = useCategoryStore(); // from zustand
 
   const handleImageChange = (event) => {
     const selectedFiles = Array.from(event.target.files);
@@ -127,7 +127,7 @@ const AddProduct = () => {
           />
         </div>
 
-        <div>
+        {/* <div>
           <label className="block text-[#777186] font-semibold mb-1 font-[play]">
             Price Term
           </label>
@@ -139,7 +139,7 @@ const AddProduct = () => {
             <option value="Healthcare Products">Negotiable</option>
             <option value="Cleaning Agents">Non-negotiable</option>
           </select>
-        </div>
+        </div> */}
         <div>
           <label className="block text-[#777186] font-semibold mb-1 font-[play]">
             Price
