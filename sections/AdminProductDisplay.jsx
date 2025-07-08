@@ -7,31 +7,34 @@ import toast from "react-hot-toast";
 import ProductSkeletonGrid from "@/components/stateComponents/ProductSkeletonGrid";
 import Image from "next/image";
 import Link from "next/link";
+import useProductStore from "@/stores/useProductStore"; // from zustand store
+import useCategoryStore from "@/stores/useCategoryStore"; // from zustand store
 
 const AdminProductDisplay = () => {
   const [view, setView] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [filterCategory, setFilterCategory] = useState("All");
-  const [isLoading, setIsLoading] = useState(true);
-  const [products, setProducts] = useState();
   const [filteredProducts, setFilteredProducts] = useState();
+  
+  const{products,isLoading,error,fetchProducts}=useProductStore(); // from zustand store
+  const{categories,fetchCategories} = useCategoryStore(); // from zustand store
 
   // fetching products from fakeApi store
-  const getProducts = async () => {
-    try {
-      const response = await axios.get("https://fakestoreapi.com/products/");
-      console.log("RESPONSE: ", response);
-      setProducts(response.data);
-    } catch (error) {
-      console.log(error.response);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // const getProducts = async () => {
+  //   try {
+  //     const response = await axios.get("https://fakestoreapi.com/products/");
+  //     console.log("RESPONSE: ", response);
+  //     setProducts(response.data);
+  //   } catch (error) {
+  //     console.log(error.response);
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
 
   useEffect(() => {
-    getProducts();
+    fetchProducts();
 
     const savedView = localStorage.getItem("view");
     if (savedView) {
@@ -53,6 +56,10 @@ const AdminProductDisplay = () => {
     setSelectedProduct(product);
     setShowModal(true);
   };
+
+  useEffect(()=>{
+    fetchCategories()
+  },[])
 
   // const confirmDelete = async (id) => {
   //   const result = await deleteProduct(id);
@@ -82,7 +89,7 @@ const AdminProductDisplay = () => {
               filterCategory.toLowerCase().trim()
           )
     );
-  }, [products]);
+  }, [products, filterCategory]); 
 
   return (
     // Fetch and display products with edit/delete buttons
@@ -99,14 +106,21 @@ const AdminProductDisplay = () => {
           <select
             value={filterCategory}
             onChange={(e) => setFilterCategory(e.target.value)}
-            className="border w-40 text-[12px] md:text-[16px] md:w-60 border-[#67216D] text-[#67216D] rounded-lg p-2 shadow-md focus:outline-none focus:ring-2 focus:ring-[#FF6C2F] font-[play] cursor-pointer"
+            className="border w-40 md:w-60 text-[12px] md:text-[16px] border-[#67216D] text-[#67216D] rounded-lg p-2 shadow-md focus:outline-none focus:ring-2 focus:ring-[#FF6C2F] font-[play] cursor-pointer"
           >
             <option value="All">All Products</option>
-            <option value="Cleaning Agents">Cleaning Products</option>
-            <option value="Healthcare Products">Healthcare Products</option>
-            <option value="Skincare Products">
-              Cosmetics / Skincare Products
-            </option>
+            {categories.length ? (
+              categories.map((cat) => (
+                <option
+                  key={cat._id}
+                  value={cat._id}
+                >
+                  {cat.name}
+                </option>
+              ))
+            ) : (
+              <option disabled>Loading…</option>
+            )}
           </select>
         </div>
 
@@ -155,7 +169,7 @@ const AdminProductDisplay = () => {
                   <h3 className="text-lg font-bold text-[#283144]">
                     {product.name}
                   </h3>
-                  <p className="text-sm text-gray-500">{product.title}</p>
+                  <p className="text-sm text-gray-500">{product.description}</p>
                   <div className="ml-8 flex flex-wrap items-center justify-around w-40  mt-2">
                     <p className="text-sm text-[#FF6C2F] ">
                       GH{"\u20B5"} {product.price}
@@ -163,7 +177,7 @@ const AdminProductDisplay = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-3 mt-4">
-                  <Link href={`/admin/products/${product.id}`}>
+                  <Link href={`/admin/products/${product._id}`}>
                     <motion.button
                       title="view Published Product"
                       whileTap={{ scale: 0.95 }}
@@ -172,7 +186,7 @@ const AdminProductDisplay = () => {
                       <FiEye size={20} />
                     </motion.button>
                   </Link>
-                  <Link href={`/admin/products/${product.id}`}>
+                  <Link href={`/admin/products/${product._id}`}>
                     <motion.button
                       title="Edit Published Product"
                       whileTap={{ scale: 0.95 }}
@@ -214,7 +228,7 @@ const AdminProductDisplay = () => {
                 <tbody>
                   {filteredProducts?.map((product) => (
                     <tr
-                      key={product.id}
+                      key={product._id}
                       className="border-b hover:bg-[#FFE2D5] transition-all duration-300"
                     >
                       <td className="p-4">
@@ -231,13 +245,13 @@ const AdminProductDisplay = () => {
                         </div>
                       </td>
                       <td className="p-4 text-sm text-gray-500">
-                        {product.title}
+                        {product.description}
                       </td>
                       <td className="p-4 text-sm text-[#FF6C2F]">
                         GH{"\u20B5"} {product.price}
                       </td>
                       <td className="p-4 flex gap-3 items-center justify-center mt-5">
-                        <Link href={`/admin/products/${product.id}`}>
+                        <Link href={`/admin/products/${product._id}`}>
                           <motion.button
                             title="View Published  Product"
                             whileTap={{ scale: 0.95 }}
@@ -246,7 +260,7 @@ const AdminProductDisplay = () => {
                             <FiEye size={20} />
                           </motion.button>
                         </Link>
-                        <Link href={`/admin/products/${product.id}`}>
+                        <Link href={`/admin/products/${product._id}`}>
                           <motion.button
                             title="Edit Published product"
                             whileTap={{ scale: 0.0 }}
@@ -288,7 +302,7 @@ const AdminProductDisplay = () => {
             <p className="text-sm text-gray-500 mb-4 font-[play]">
               Are you sure you want to delete the product{" "}
               <span className="font-bold text-black">
-                {selectedProduct.title}
+                {selectedProduct.name}
               </span>
               ?
             </p>
@@ -302,7 +316,7 @@ const AdminProductDisplay = () => {
               </motion.button>
               <motion.button
                 whileTap={{ scale: 0.95 }}
-                onClick={() => confirmDelete(selectedProduct.id)}
+                onClick={() => confirmDelete(selectedProduct._id)}
                 className="bg-red-500 text-white px-4 py-2 rounded-lg"
               >
                 Delete

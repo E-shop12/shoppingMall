@@ -32,3 +32,9 @@ export const getCategory = async () => {
   const res = await apiClient.get("/product-category");
   return res.data.data; // ✅ returns ONLY the array now
 };
+
+// service to get a single product category by id 
+export  const getSingleCategoryID = async(_id) =>{
+    const res = await apiClient.get(`/product-category/${_id}`);
+    return res.data.data;
+}

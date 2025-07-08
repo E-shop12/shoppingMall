@@ -1,37 +1,163 @@
-'use client'
+"use client";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FiX, FiUploadCloud, FiXCircle, FiArrowLeft } from "react-icons/fi";
 import { MdPostAdd } from "react-icons/md";
 import { AiOutlinePlus } from "react-icons/ai";
 import { toast } from "react-hot-toast";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
 
-const EditProduct = () => {
+import useProductStore from "@/stores/useProductStore"; // products
+import useCategoryStore from "@/stores/useCategoryStore"; // categories  ← NEW
 
-  const [images, setImages] = useState([]);
-    const [files, setFiles] = useState([]);
-  
-    const [loading, setLoading] = useState(false);
-  
-    const handleImageChange = (event) => {
-      const selectedFiles = Array.from(event.target.files);
-      const previewURLs = selectedFiles.map((file) => URL.createObjectURL(file));
-      setImages((prev) => [...prev, ...previewURLs]);
-      setFiles((prev) => [...prev, ...selectedFiles]);
-    };
-  
-    const removeImage = (index) => {
-      const newImages = [...images];
-      const newFiles = [...files];
-      newImages.splice(index, 1);
-      newFiles.splice(index, 1);
-      setImages(newImages);
-      setFiles(newFiles);
-    };
-  
+const EditProduct = () => {
+  /* ------------------------------------------------------------------ */
+  /* hooks & stores                                                     */
+  /* ------------------------------------------------------------------ */
+  const { id } = useParams(); // product ID from route
+  const router = useRouter();
+
+  const { products, editProduct, isLoading } = useProductStore();
+  const {
+    categories, // cached list
+    fetchCategories, // action to load all
+    getCategoryById, // fetch one by id (cached)
+  } = useCategoryStore(); // ← NEW
+
+  /* ------------------------------------------------------------------ */
+  /* local state                                                        */
+  /* ------------------------------------------------------------------ */
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    price: "",
+    categoryId: "", // store the **ID** not the name  ← CHANGED
+  });
+
+  const [images, setImages] = useState([]); // preview URLs
+  const [files, setFiles] = useState([]); // File objects
+
+  /* ------------------------------------------------------------------ */
+  /* 1️⃣  Load product and pre‑fill form                                */
+  /* ------------------------------------------------------------------ */
+  useEffect(() => {
+    const product = products.find((p) => p._id === id);
+    if (!product) return;
+
+    /* --------------------------------------------------------------
+     * Resolve categoryId – covers every backend variant
+     * -------------------------------------------------------------- */
+    let catId = "";
+
+    // 1. Direct id fields  (categoryId / category_id / catId)
+    if (product.categoryId || product.category_id || product.catId) {
+      catId = String(
+        product.categoryId || product.category_id || product.catId
+      );
+    }
+
+    // 2. Embedded SINGLE object  (category: { _id, name })
+    else if (
+      product.category &&
+      !Array.isArray(product.category) &&
+      product.category._id
+    ) {
+      catId = String(product.category._id);
+    }
+
+    // 3. Embedded ARRAY of objects  (category: [{ _id, name }, …])
+    else if (
+      Array.isArray(product.category) &&
+      product.category.length &&
+      product.category[0]._id
+    ) {
+      catId = String(product.category[0]._id); // 👈 your case
+    }
+
+    // 4. Only a name – resolve to an ID once categories are loaded
+    else if (
+      product.category &&
+      typeof product.category === "string" &&
+      categories.length
+    ) {
+      const match = categories.find(
+        (c) => c.name.toLowerCase() === product.category.toLowerCase()
+      );
+      if (match) catId = String(match._id);
+    }
+
+    console.log("Resolved catId:", catId); // should now log the _id string
+
+    setFormData({
+      name: product.name ?? "",
+      description: product.description ?? "",
+      price: product.price ?? "",
+      categoryId: catId, // ID string or ""
+    });
+    setImages(product.images || []);
+  }, [id, products, categories]); // include categories dependency
+
+  /* ------------------------------------------------------------------ */
+  /* 2️⃣  Ensure categories are loaded (once)                           */
+  /* ------------------------------------------------------------------ */
+  useEffect(() => {
+    if (categories.length === 0) {
+      fetchCategories(); // load all categories
+    }
+  }, [categories.length, fetchCategories]);
+
+  /* ------------------------------------------------------------------ */
+  /* 3️⃣  If form already has categoryId but that single category       */
+  /*     isn’t in the list yet, fetch it and cache it                   */
+  /* ------------------------------------------------------------------ */
+  useEffect(() => {
+    if (!formData.categoryId) return;
+
+    const inCache = categories.some((c) => c._id === formData.categoryId);
+    if (!inCache) {
+      getCategoryById(formData.categoryId).catch(() => {
+        /* handled in store */
+      });
+    }
+  }, [formData.categoryId, categories, getCategoryById]);
+
+  /* ------------------------------------------------------------------ */
+  /* image handlers                                                     */
+  /* ------------------------------------------------------------------ */
+  const handleImageChange = (e) => {
+    const selected = Array.from(e.target.files);
+    const previews = selected.map((file) => URL.createObjectURL(file));
+
+    setImages((prev) => [...prev, ...previews]);
+    setFiles((prev) => [...prev, ...selected]);
+  };
+
+  const removeImage = (idx) => {
+    setImages((prev) => prev.filter((_, i) => i !== idx));
+    setFiles((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  /* ------------------------------------------------------------------ */
+  /* submit                                                             */
+  /* ------------------------------------------------------------------ */
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = { ...formData, images };
+      await editProduct(id, payload);
+      toast.success("Product updated successfully");
+      router.push("/admin/products");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to update product");
+    }
+  };
+
+  /* ------------------------------------------------------------------ */
+  /* render                                                             */
+  /* ------------------------------------------------------------------ */
   return (
     <div>
       <motion.div
@@ -41,14 +167,15 @@ const EditProduct = () => {
         transition={{ type: "spring", stiffness: 100, damping: 25 }}
         className="p-5 md:p-10 bg-[#F9F7F7] min-h-screen font-[play]"
       >
-        <Link href={"/admin/products"}>
+        {/* back link */}
+        <Link href="/admin/products">
           <motion.div
             whileTap={{ scale: 0.9 }}
-            className=" flex w-full justify-end mb-5"
+            className="flex w-full justify-end mb-5"
           >
             <button
               title="Back to all Products Page"
-              className="text-[#4A235A] hover:text-[#513E5F] transition-colors duration-200 flex items-center gap-2 cursor-pointer "
+              className="text-[#4A235A] hover:text-[#513E5F] transition-colors duration-200 flex items-center gap-2 cursor-pointer"
             >
               <FiArrowLeft size={24} />
               <span className="hidden md:inline font-[play]">Back</span>
@@ -56,6 +183,7 @@ const EditProduct = () => {
           </motion.div>
         </Link>
 
+        {/* heading */}
         <div className="flex items-center gap-3 mb-8">
           <MdPostAdd size={30} className="text-[#FF6C2F]" />
           <h1 className="text-2xl md:text-3xl font-bold text-[#67216D] font-[play]">
@@ -63,10 +191,12 @@ const EditProduct = () => {
           </h1>
         </div>
 
+        {/* form */}
         <form
-          // onSubmit={handleSubmit}
+          onSubmit={handleSubmit}
           className="bg-white shadow-md rounded-xl p-6 space-y-6"
         >
+          {/* title */}
           <div>
             <label className="block text-[#777186] font-semibold mb-1 font-[play]">
               Product Title
@@ -74,12 +204,17 @@ const EditProduct = () => {
             <input
               type="text"
               name="name"
+              value={formData.name}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
               placeholder="Enter product name"
               className="w-full border rounded-lg px-4 py-2 placeholder-[#777186] font-[play] focus:outline-none focus:ring-1 ring-gray-300"
               required
             />
           </div>
 
+          {/* description */}
           <div>
             <label className="block text-[#777186] font-semibold mb-1 font-[play]">
               Product Description
@@ -87,91 +222,69 @@ const EditProduct = () => {
             <input
               type="text"
               name="description"
+              value={formData.description}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
               placeholder="Detailed description of the product and its purpose"
               className="w-full border rounded-lg px-4 py-2 placeholder-[#777186] font-[play] focus:outline-none focus:ring-1 ring-gray-300"
               required
             />
           </div>
 
-          <div>
-            <label className="block text-[#777186] font-semibold mb-1 font-[play]">
-              Additional Product Description
-            </label>
-            <textarea
-              name="desDetail"
-              placeholder="Additional description of a product"
-              className="w-full border rounded-lg px-4 py-2 h-28 resize-none placeholder-[#777186] font-[play] focus:outline-none focus:ring-1 ring-gray-300"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-[#777186] font-semibold mb-1 font-[play]">
-              Price Term
-            </label>
-            <select
-              name="categoryName"
-              className="w-full border rounded-lg px-4 py-2 text-[#777186] font-[play] focus:outline-none focus:ring-1 ring-gray-300"
-              required
-            >
-              <option value="">select a price term</option>
-              <option value="Healthcare Products">Negotiable</option>
-              <option value="Cleaning Agents">Non-negotiable</option>
-            </select>
-          </div>
+          {/* price */}
           <div>
             <label className="block text-[#777186] font-semibold mb-1 font-[play]">
               Price
             </label>
             <input
-              type="text"
+              type="number"
               name="price"
+              value={formData.price}
+              onChange={(e) =>
+                setFormData({ ...formData, price: e.target.value })
+              }
               placeholder="45"
               className="w-full border rounded-lg px-4 py-2 placeholder-[#777186] font-[play] focus:outline-none focus:ring-1 ring-gray-300"
               required
             />
           </div>
 
+          {/* category */}
           <div>
             <label className="block text-[#777186] font-semibold mb-1 font-[play]">
               Category
             </label>
+
             <select
-              name="categoryName"
+              name="categoryId"
+              value={formData.categoryId}
+              onChange={(e) =>
+                setFormData({ ...formData, categoryId: e.target.value })
+              }
               className="w-full border rounded-lg px-4 py-2 text-[#777186] font-[play] focus:outline-none focus:ring-1 ring-gray-300"
               required
             >
               <option value="">Select a category</option>
-              <option value="Skincare Products">
-                Cosmetics / Skincare Products
-              </option>
-              <option value="Healthcare Products">Healthcare Products</option>
-              <option value="Cleaning Agents">Cleaning Agents</option>
+
+              {/* dynamic options from store */}
+              {categories.map((cat) => (
+                <option key={cat._id} value={String(cat._id)}>
+                  {cat.name}
+                </option>
+              ))}
             </select>
           </div>
 
-          {/* New Quantity Field */}
-          {/* <div>
-          <label className="block text-[#777186] font-semibold mb-1 font-[play]">
-            Quantity
-          </label>
-          <input
-            type="text"
-            name="quantity"
-            placeholder="Enter the available stock quantity"
-            className="w-full border rounded-lg px-4 py-2 placeholder-[#777186] font-[play] focus:outline-none focus:ring-1 ring-gray-300"
-            required
-          />
-        </div> */}
-
+          {/* image upload */}
           <div>
             <label className="block text-[#777186] font-semibold mb-2 font-[play]">
               Upload Product Images
             </label>
+
             <div className="flex items-center gap-4">
               <input
                 type="file"
-                name="pictures"
                 multiple
                 accept="image/*"
                 onChange={handleImageChange}
@@ -179,8 +292,8 @@ const EditProduct = () => {
                 id="image-upload"
               />
               <label
-                title="Add an Image or Images to the product"
                 htmlFor="image-upload"
+                title="Add an Image or Images to the product"
                 className="cursor-pointer inline-flex items-center gap-2 bg-[#4A235A] hover:bg-[#513E5F] text-white px-4 py-2 rounded-lg font-[play]"
               >
                 <FiUploadCloud size={18} />
@@ -188,22 +301,22 @@ const EditProduct = () => {
               </label>
             </div>
 
+            {/* previews */}
             <div className="flex flex-wrap gap-3 mt-4">
-              {images.map((img, index) => (
+              {images.map((img, idx) => (
                 <div
-                  key={index}
+                  key={idx}
                   className="relative border rounded-lg overflow-hidden w-20 h-20"
                 >
                   <Image
-                    src={img || ""}
+                    src={img}
                     alt="preview"
-                    className="w-full h-full object-cover"
-                    width={250}
-                    height={300}
+                    fill
+                    className="object-cover"
                   />
                   <button
                     type="button"
-                    onClick={() => removeImage(index)}
+                    onClick={() => removeImage(idx)}
                     className="absolute top-1 right-1 bg-white rounded-full p-1"
                   >
                     <FiXCircle className="text-red-500" />
@@ -213,12 +326,13 @@ const EditProduct = () => {
             </div>
           </div>
 
+          {/* actions */}
           <div className="flex justify-end gap-4 mt-6">
-            <Link href={"/admin/products"}>
+            <Link href="/admin/products">
               <motion.button
-                title="Cancel & Back to All Products"
                 whileTap={{ scale: 0.95 }}
                 type="button"
+                title="Cancel & Back to All Products"
                 className="flex items-center gap-2 bg-red-300 text-[#9d0505] px-7 py-2 rounded-lg font-[play] font-semibold cursor-pointer"
               >
                 <FiX size={18} />
@@ -227,15 +341,15 @@ const EditProduct = () => {
             </Link>
 
             <motion.button
-              title="Publish A New Product"
               whileTap={{ scale: 0.95 }}
               type="submit"
+              disabled={isLoading}
+              title="Update Product"
               className={`flex text-sm md:text-[16px] items-center gap-2 bg-[#4A235A] hover:bg-[#513E5F] text-white px-7 py-2 rounded-lg font-[play] font-semibold cursor-pointer ${
-                loading ? "opacity-70 cursor-not-allowed" : ""
+                isLoading ? "opacity-70 cursor-not-allowed" : ""
               }`}
-              disabled={loading}
             >
-              {loading ? (
+              {isLoading ? (
                 <>
                   <svg
                     className="animate-spin h-5 w-5 mr-2 text-white"
@@ -250,19 +364,19 @@ const EditProduct = () => {
                       r="10"
                       stroke="currentColor"
                       strokeWidth="4"
-                    ></circle>
+                    />
                     <path
                       className="opacity-75"
                       fill="currentColor"
                       d="M4 12a8 8 0 018-8v8H4z"
-                    ></path>
+                    />
                   </svg>
-                  Publishing......
+                  Updating…
                 </>
               ) : (
                 <>
                   <AiOutlinePlus size={18} />
-                 Edit  Publish Product
+                  Update Product
                 </>
               )}
             </motion.button>
@@ -271,6 +385,6 @@ const EditProduct = () => {
       </motion.div>
     </div>
   );
-}
+};
 
-export default EditProduct
+export default EditProduct;

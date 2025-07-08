@@ -26,7 +26,7 @@ const SidebarContent = ({
       >
         <option value="">All</option>
         {categories.map((cat) => (
-          <option key={cat._id || cat.name} value={cat.name}>
+          <option key={cat._id || cat.name} value={cat._id}>
             {cat.name}
           </option>
         ))}

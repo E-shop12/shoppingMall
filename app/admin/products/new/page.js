@@ -45,6 +45,7 @@ const AddProduct = () => {
     try {
       await createProduct(formData);
       toast.success("product published");
+      
     } catch (error) {
       toast.error("product not published");
       console.log(error);
